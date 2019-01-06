@@ -1,7 +1,7 @@
 #ifndef OSU_BEATMAP_H
 #define OSU_BEATMAP_H
 
-#include "common.h"
+#include "athenosum/common.h"
 
 #include <stdio.h>
 #include <string.h>

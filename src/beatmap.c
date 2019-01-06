@@ -1,4 +1,4 @@
-#include "beatmap.h"
+#include "athenosum/beatmap.h"
 
 /**
  * Parses a raw beatmap line into a beatmap_meta struct pointed to by *meta.
