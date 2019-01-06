@@ -18,7 +18,7 @@
   #define OSU_HOME_ENV "USERPROFILE"
   #define OSU_SIGNATURE "\xDB\x5D\xE8\x8B\x45\xE8\xA3"
  
-  #define OSU_SEPERATOR '\\'
+  #define OSU_SEPARATOR '\\'
   #define OSU_DEFAULT_PATH "\\AppData\\Local\\osu!\\Songs\\"
 #endif /* _WIN32 */
 
@@ -31,7 +31,7 @@
   #define OSU_HOME_ENV "HOME"
   #define OSU_LINUX_TIME_ADDRESS 0x36e5ba4
 
-  #define OSU_SEPERATOR '/'
+  #define OSU_SEPARATOR '/'
   #define OSU_DEFAULT_PATH "/osufolder/Songs/"
 #endif /* __linux__ */
 

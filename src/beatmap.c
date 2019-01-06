@@ -4,26 +4,26 @@
  * Parses a raw beatmap line into a beatmap_meta struct pointed to by *meta.
  * Returns the number of tokens read.
  */
-static int parse_beatmap_line(char *line, struct beatmap_meta *meta);
+static int parse_beatmap_line(char *line, struct osu_beatmap_meta *meta);
 
 /**
  * Parses a key:value set into *meta.
  */
 static void parse_beatmap_token(char *key, char *value,
-	struct beatmap_meta *meta);
+	struct osu_beatmap_meta *meta);
 
 /**
  * Parses a raw hitobject line into a hitpoint struct pointed to by *point.
  * Returns the number of tokens read.
  */
 static int parse_hitobject_line(char *line, int columns,
-	struct hitpoint *point);
+	struct osu_hitpoint *point);
 
 /**
  * Populates *start and *end with data from hitpoint *point.
  */
-static void hitpoint_to_action(char *keys, struct hitpoint *point,
-	struct action *start, struct action *end);
+static void hitpoint_to_action(char *keys, struct osu_hitpoint *point,
+	struct osu_action *start, struct osu_action *end);
 
 /**
  * Returns a randomly generated number in the range of [0, range], while
@@ -71,7 +71,7 @@ size_t find_beatmap(char *base, char *partial, char **map)
 	strcpy(*map + base_len, folder);
 	/* Add a trailing seperator and terminating zero. */
 	strcpy(*map + base_len + folder_len,
-		(char[2]){(char)OSU_SEPERATOR, '\0'});
+		(char[2]){(char)OSU_SEPARATOR, '\0'});
 
 	free(folder);
 
@@ -108,8 +108,8 @@ size_t find_beatmap(char *base, char *partial, char **map)
 
 /* TODO: Inefficient as it calls realloc() for every parsed line. Allocate
 	 memory in chunks and copy it to adequately sized buffer once done. */
-size_t parse_beatmap(char *file, struct hitpoint **points,
-	struct beatmap_meta **meta)
+size_t parse_beatmap(char *file, struct osu_hitpoint **points,
+	struct osu_beatmap_meta **meta)
 {
 	if (!points || !meta || !file) {
 		osu_debug("received null pointer");
@@ -124,13 +124,13 @@ size_t parse_beatmap(char *file, struct hitpoint **points,
 	}
 
 	*points = NULL;
-	*meta = calloc(1, sizeof(struct beatmap_meta));
+	*meta = calloc(1, sizeof(struct osu_beatmap_meta));
 
 	const size_t line_len = 256;
 	char *line = malloc(line_len);
 
-	struct hitpoint cur_point;
-	size_t hp_size = sizeof(struct hitpoint), num_parsed = 0;
+	struct osu_hitpoint cur_point;
+	size_t hp_size = sizeof(struct osu_hitpoint), num_parsed = 0;
 
 	char cur_section[128];
 
@@ -159,7 +159,7 @@ size_t parse_beatmap(char *file, struct hitpoint **points,
 }
 
 /* TODO: This function is not thread safe. */
-static int parse_beatmap_line(char *line, struct beatmap_meta *meta)
+static int parse_beatmap_line(char *line, struct osu_beatmap_meta *meta)
 {
 	int i = 0;
 	char *ln = strdup(line);
@@ -190,7 +190,7 @@ static int parse_beatmap_line(char *line, struct beatmap_meta *meta)
 }
 
 static void parse_beatmap_token(char *key, char *value,
-	struct beatmap_meta *meta)
+	struct osu_beatmap_meta *meta)
 {
 	if (!key || !value || !meta) {
 		osu_debug("received null pointer");
@@ -221,7 +221,7 @@ static void parse_beatmap_token(char *key, char *value,
 }
 
 /* TODO: This function is not thread safe. */
-static int parse_hitobject_line(char *line, int columns, struct hitpoint *point)
+static int parse_hitobject_line(char *line, int columns, struct osu_hitpoint *point)
 {
 	int secval = 0, end_time = 0, slider = 0, i = 0;
 	char *ln = strdup(line), *token = NULL;
@@ -240,7 +240,7 @@ static int parse_hitobject_line(char *line, int columns, struct hitpoint *point)
 		case 2: point->start_time = secval;
 			break;
 		/* Type */
-		case 3: slider = secval & TYPE_SLIDER;
+		case 3: slider = secval & OSU_TYPE_SLIDER;
 			break;
 		/* Extra string, first element is either 0 or end time */
 		case 5:
@@ -261,13 +261,13 @@ static int parse_hitobject_line(char *line, int columns, struct hitpoint *point)
 	return i;
 }
 
-int parse_hitpoints(size_t count, size_t columns, struct hitpoint **points,
-	struct action **actions)
+int parse_hitpoints(size_t count, size_t columns, struct osu_hitpoint **points,
+	struct osu_action **actions)
 {
 	/* Allocate enough memory for all actions at once. */
-	*actions = malloc((2 * count) * sizeof(struct action));
+	*actions = malloc((2 * count) * sizeof(struct osu_action));
 
-	struct hitpoint *cur_point;
+	struct osu_hitpoint *cur_point;
 	size_t num_actions = 0, i = 0;
 
 	char *key_subset = malloc(columns + 1);
@@ -289,8 +289,8 @@ int parse_hitpoints(size_t count, size_t columns, struct hitpoint **points,
 		cur_point = (*points) + i++;
 
 		/* Don't care about the order here. */
-		struct action *end = *actions + num_actions++;
-		struct action *start = *actions + num_actions++;
+		struct osu_action *end = *actions + num_actions++;
+		struct osu_action *start = *actions + num_actions++;
 
 		hitpoint_to_action(key_subset, cur_point, start, end);
 	}
@@ -303,8 +303,8 @@ int parse_hitpoints(size_t count, size_t columns, struct hitpoint **points,
 	return num_actions;
 }
 
-static void hitpoint_to_action(char *keys, struct hitpoint *point,
-	struct action *start, struct action *end)
+static void hitpoint_to_action(char *keys, struct osu_hitpoint *point,
+	struct osu_action *start, struct osu_action *end)
 {
 	end->time = point->end_time;
 	start->time = point->start_time;
@@ -319,10 +319,10 @@ static void hitpoint_to_action(char *keys, struct hitpoint *point,
 }
 
 /* TODO: Implement a more efficient sorting algorithm. */
-int sort_actions(int total, struct action **actions)
+int sort_actions(int total, struct osu_action **actions)
 {
 	int min, i, j;
-	struct action *act = *actions, tmp;
+	struct osu_action *act = *actions, tmp;
 
 	for (i = 0; i < (total - 1); i++) {
 		min = i;
@@ -339,19 +339,19 @@ int sort_actions(int total, struct action **actions)
 }
 
 /* TODO: This function is stupid, fix it and add actual humanization. */
-void humanize_hitpoints(int total, struct hitpoint **points, int level)
+void humanize_hitpoints(int total, struct osu_hitpoint **points, int level)
 {
 	if (!level) {
 		return;
 	}
 
 	int i, offset;
-	struct hitpoint *p = NULL;
+	struct osu_hitpoint *p = NULL;
 	for (i = 0; i < total; i++) {
 		p = *points + i;
 
 		/* [0, level] */
-		offset = generate_number(level, RNG_ROUNDS, RNG_BOUNDARY);
+		offset = generate_number(level, OSU_RNG_ROUNDS, OSU_RNG_BOUNDARY);
 		
 		/* [-(level / 2), (level / 2)] */
 		offset -= (level / 2);
