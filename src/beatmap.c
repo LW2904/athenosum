@@ -221,7 +221,8 @@ static void parse_beatmap_token(char *key, char *value,
 }
 
 /* TODO: This function is not thread safe. */
-static int parse_hitobject_line(char *line, int columns, struct osu_hitpoint *point)
+static int parse_hitobject_line(char *line, int columns,
+	struct osu_hitpoint *point)
 {
 	int secval = 0, end_time = 0, slider = 0, i = 0;
 	char *ln = strdup(line), *token = NULL;
@@ -351,7 +352,8 @@ void humanize_hitpoints(int total, struct osu_hitpoint **points, int level)
 		p = *points + i;
 
 		/* [0, level] */
-		offset = generate_number(level, OSU_RNG_ROUNDS, OSU_RNG_BOUNDARY);
+		offset = generate_number(level, OSU_RNG_ROUNDS,
+			OSU_RNG_BOUNDARY);
 		
 		/* [-(level / 2), (level / 2)] */
 		offset -= (level / 2);

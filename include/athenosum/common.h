@@ -47,7 +47,7 @@
   #define osu_debug(...)\
       ;\
 
-#endif /* DEBUG */
+#endif /* OSU_DEBUG */
 
 /* Suggested default */
 #define OSU_TAPTIME_MS 15
