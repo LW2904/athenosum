@@ -5,7 +5,10 @@ project(libathenosum VERSION 0.0.1 LANGUAGES C)
 include(GNUInstallDirs)
 
 add_library(athenosum
-	src/beatmap.c)
+		src/beatmap.c
+		src/game.c
+		src/process.c
+		src/window.c)
 
 target_include_directories(athenosum
 	PUBLIC
