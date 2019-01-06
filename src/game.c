@@ -73,7 +73,7 @@ void do_setup()
 
 		return;
 	}
-	
+
 	osu_debug("opened X display (%#x)", (unsigned)(intptr_t)display);
 #endif /* OSU_ON_LINUX */
 

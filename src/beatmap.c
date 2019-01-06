@@ -10,20 +10,21 @@ static int parse_beatmap_line(char *line, struct osu_beatmap_meta *meta);
  * Parses a key:value set into *meta.
  */
 static void parse_beatmap_token(char *key, char *value,
-	struct osu_beatmap_meta *meta);
+				struct osu_beatmap_meta *meta);
 
 /**
  * Parses a raw hitobject line into a hitpoint struct pointed to by *point.
  * Returns the number of tokens read.
  */
 static int parse_hitobject_line(char *line, int columns,
-	struct osu_hitpoint *point);
+				struct osu_hitpoint *point);
 
 /**
  * Populates *start and *end with data from hitpoint *point.
  */
 static void hitpoint_to_action(char *keys, struct osu_hitpoint *point,
-	struct osu_action *start, struct osu_action *end);
+			       struct osu_action *start,
+			       struct osu_action *end);
 
 /**
  * Returns a randomly generated number in the range of [0, range], while
@@ -71,7 +72,7 @@ size_t find_beatmap(char *base, char *partial, char **map)
 	strcpy(*map + base_len, folder);
 	/* Add a trailing seperator and terminating zero. */
 	strcpy(*map + base_len + folder_len,
-		(char[2]){(char)OSU_SEPARATOR, '\0'});
+	       (char[2]){ (char)OSU_SEPARATOR, '\0' });
 
 	free(folder);
 
@@ -94,10 +95,10 @@ size_t find_beatmap(char *base, char *partial, char **map)
 	*map = realloc(*map, map_len + 1);
 
 	/* Verify that the file we found is a beatmap.
-	   TODO: This is really crude right now */
+	       TODO: This is really crude right now */
 	if (strcmp(*map + map_len - 4, ".osu") != 0) {
 		osu_debug("%s is probably not a beatmap", *map);
-		
+
 		free(*map);
 
 		return 0;
@@ -109,7 +110,7 @@ size_t find_beatmap(char *base, char *partial, char **map)
 /* TODO: Inefficient as it calls realloc() for every parsed line. Allocate
 	 memory in chunks and copy it to adequately sized buffer once done. */
 size_t parse_beatmap(char *file, struct osu_hitpoint **points,
-	struct osu_beatmap_meta **meta)
+		     struct osu_beatmap_meta **meta)
 {
 	if (!points || !meta || !file) {
 		osu_debug("received null pointer");
@@ -142,12 +143,12 @@ size_t parse_beatmap(char *file, struct osu_hitpoint **points,
 			parse_beatmap_line(line, *meta);
 		} else if (!(strcmp(cur_section, "[HitObjects]\n"))) {
 			parse_hitobject_line(line, meta[0]->columns,
-				&cur_point);
+					     &cur_point);
 
 			*points = realloc(*points, ++num_parsed * hp_size);
 			points[0][num_parsed - 1] = cur_point;
 		}
-	
+
 		if (line[0] == '[')
 			strcpy(cur_section, line);
 	}
@@ -190,7 +191,7 @@ static int parse_beatmap_line(char *line, struct osu_beatmap_meta *meta)
 }
 
 static void parse_beatmap_token(char *key, char *value,
-	struct osu_beatmap_meta *meta)
+				struct osu_beatmap_meta *meta)
 {
 	if (!key || !value || !meta) {
 		osu_debug("received null pointer");
@@ -198,7 +199,7 @@ static void parse_beatmap_token(char *key, char *value,
 	}
 
 	/* Always ignore last two characters since .osu files are CRLF by
-	   default. */
+	       default. */
 	if (!(strcmp(key, "Title"))) {
 		value[strlen(value) - 2] = '\0';
 
@@ -222,33 +223,32 @@ static void parse_beatmap_token(char *key, char *value,
 
 /* TODO: This function is not thread safe. */
 static int parse_hitobject_line(char *line, int columns,
-	struct osu_hitpoint *point)
+				struct osu_hitpoint *point)
 {
 	int secval = 0, end_time = 0, slider = 0, i = 0;
 	char *ln = strdup(line), *token = NULL;
 
 	/* Line is expected to follow the following format:
-	   x, y, time, type, hitSound, extras (= a:b:c:d:) */
+	       x, y, time, type, hitSound, extras (= a:b:c:d:) */
 	token = strtok(ln, ",");
 	while (token != NULL) {
 		secval = (int)strtol(token, NULL, 10);
 
 		switch (i++) {
-		/* X */
+			/* X */
 		case 0: point->column = secval / (OSU_COLS_WIDTH / columns);
 			break;
-		/* Start time */
+			/* Start time */
 		case 2: point->start_time = secval;
 			break;
-		/* Type */
+			/* Type */
 		case 3: slider = secval & OSU_TYPE_SLIDER;
 			break;
-		/* Extra string, first element is either 0 or end time */
-		case 5:
-			end_time = (int)strtol(strtok(token, ":"), NULL, 10);
+			/* Extra string, first element is either 0 or end time */
+		case 5: end_time = (int)strtol(strtok(token, ":"), NULL, 10);
 
 			point->end_time = slider ? end_time :
-				point->start_time + OSU_TAPTIME_MS;
+					  point->start_time + OSU_TAPTIME_MS;
 
 			break;
 		}
@@ -263,7 +263,7 @@ static int parse_hitobject_line(char *line, int columns,
 }
 
 int parse_hitpoints(size_t count, size_t columns, struct osu_hitpoint **points,
-	struct osu_action **actions)
+		    struct osu_action **actions)
 {
 	/* Allocate enough memory for all actions at once. */
 	*actions = malloc((2 * count) * sizeof(struct osu_action));
@@ -299,19 +299,19 @@ int parse_hitpoints(size_t count, size_t columns, struct osu_hitpoint **points,
 	free(key_subset);
 
 	/* TODO: Check if all *actions memory was used and free() if
-	   applicable. */
+	       applicable. */
 
 	return num_actions;
 }
 
 static void hitpoint_to_action(char *keys, struct osu_hitpoint *point,
-	struct osu_action *start, struct osu_action *end)
+			       struct osu_action *start, struct osu_action *end)
 {
 	end->time = point->end_time;
 	start->time = point->start_time;
 
-	end->down = 0;		/* Keyup. */
-	start->down = 1;	/* Keydown. */
+	end->down = 0;                /* Keyup. */
+	start->down = 1;        /* Keydown. */
 
 	char key = keys[point->column];
 
@@ -353,8 +353,8 @@ void humanize_hitpoints(int total, struct osu_hitpoint **points, int level)
 
 		/* [0, level] */
 		offset = generate_number(level, OSU_RNG_ROUNDS,
-			OSU_RNG_BOUNDARY);
-		
+					 OSU_RNG_BOUNDARY);
+
 		/* [-(level / 2), (level / 2)] */
 		offset -= (level / 2);
 
@@ -376,7 +376,7 @@ static int generate_number(int range, int rounds, double bound)
 		int in = rn > (range * minr) && rn < (range * maxr);
 
 		rn += (in ? (rand() % (int)(range * minr)) : 0)
-			* (rn < (range * 0.5) ? -1 : 1);
+		      * (rn < (range * 0.5) ? -1 : 1);
 	}
 
 	return rn;
@@ -402,7 +402,7 @@ static size_t find_partial_file(char *base, char *partial, char **out_file)
 
 	int best_match = 0;
 
-	while((ep = readdir(dp))) {
+	while ((ep = readdir(dp))) {
 		char *name = ep->d_name;
 		int score = partial_match(name, partial);
 

@@ -9,15 +9,15 @@
 #include <dirent.h>
 
 #ifdef OSU_ON_LINUX
-  Display *display;
-  Window game_window;
+	Display *display;
+	Window game_window;
 #endif /* OSU_ON_LINUX */
 
 #ifdef OSU_ON_WINDOWS
-  #include <tlhelp32.h>
+	#include <tlhelp32.h>
 
-  HWND game_window;
-  HANDLE game_proc;
+	HWND game_window;
+	HANDLE game_proc;
 #endif /* OSU_ON_WINDOWS */
 
 void *time_address;

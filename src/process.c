@@ -1,7 +1,7 @@
 #include "athenosum/process.h"
 
 static inline void *check_chunk(const unsigned char *sig, size_t sig_size,
-	unsigned char *buf, size_t buf_size);
+				unsigned char *buf, size_t buf_size);
 
 /**
  * Copies game memory at base for size bytes into buffer.
@@ -9,7 +9,7 @@ static inline void *check_chunk(const unsigned char *sig, size_t sig_size,
  * Returns number of bytes read.
  */
 static inline ssize_t _read_game_memory(void *base, void *buffer,
-	size_t size);
+					size_t size);
 
 __attribute__ ((hot)) int32_t get_maptime()
 {
@@ -33,15 +33,15 @@ ssize_t read_game_memory(void *base, void *buffer, size_t size)
 
 	if (!(read = _read_game_memory(base, buffer, size)))
 		return 0;
-	
+
 	return read;
 }
 
 static inline ssize_t _read_game_memory(void *base, void *buffer,
-	size_t size)
+					size_t size)
 {
 	ssize_t read = 0;
-	
+
 #ifdef OSU_ON_LINUX
 	struct iovec local[1];
 	struct iovec remote[1];
@@ -72,7 +72,7 @@ unsigned long get_process_id(const char *name)
 	sprintf(cmd, "pidof %s", name);
 
 	FILE *f = popen(cmd, "r");
-	size_t read = fread(cmd , 1, 200, f);
+	size_t read = fread(cmd, 1, 200, f);
 
 	fclose(f);
 
@@ -152,7 +152,7 @@ void *find_pattern(const unsigned char *signature, unsigned int sig_len)
 
 // TODO: Use a more efficient pattern matching algorithm.
 static inline void *check_chunk(const unsigned char *sig, size_t sig_size,
-	unsigned char *buf, size_t buf_size)
+				unsigned char *buf, size_t buf_size)
 {
 	// Iterate over the buffer...
 	for (size_t i = 0; i < buf_size; i++) {

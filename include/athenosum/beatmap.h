@@ -50,14 +50,14 @@ size_t find_beatmap(char *base, char *partial, char **map);
  * Returns the number of points parsed and stored.
  */
 size_t parse_beatmap(char *file, struct osu_hitpoint **points,
-	struct osu_beatmap_meta **meta);
+		     struct osu_beatmap_meta **meta);
 
 /**
  * Parses a total of count hitpoints from **points into **actions.
  * Returns the number of actions parsed and stored, which should be count * 2.
  */
 int parse_hitpoints(size_t count, size_t columns, struct osu_hitpoint **points,
-	struct osu_action **actions);
+		    struct osu_action **actions);
 
 /**
  * Sort the array of actions given through **actions by time.

@@ -7,17 +7,17 @@
 #include <limits.h>
 
 #ifdef OSU_ON_LINUX
-  // Enable GNU extensions (process_vm_readv).
-  // TODO: This is hacky and undocumented.
-  #define __USE_GNU
+	// Enable GNU extensions (process_vm_readv).
+	// TODO: This is hacky and undocumented.
+	#define __USE_GNU
 
-  #include <sys/uio.h>
+	#include <sys/uio.h>
 #endif /* OSU_ON_LINUX */
 
 #ifdef OSU_ON_WINDOWS
-  #include <tlhelp32.h>
+	#include <tlhelp32.h>
 
-  HANDLE game_proc;
+	HANDLE game_proc;
 #endif /* OSU_ON_WINDOWS */
 
 void *time_address;

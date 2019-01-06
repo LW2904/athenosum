@@ -3,31 +3,37 @@
 #include <string.h>
 
 #ifdef OSU_ON_LINUX
-  Display *display;
-  Window game_window;
+Display *display;
+Window game_window;
 
-  static pid_t get_window_pid(Window window);
-  static int is_window_visible(Window window);
-  static int is_window_match(Window window, pid_t pid);
-  static void search_children(pid_t pid, Window window, Window *out);
-  static int get_xwindow_title(Window window, char *title, int title_len);
-  static unsigned char *get_window_property(Window window, Atom atom,
-	size_t *num_items);
+static pid_t get_window_pid(Window window);
+
+static int is_window_visible(Window window);
+
+static int is_window_match(Window window, pid_t pid);
+
+static void search_children(pid_t pid, Window window, Window *out);
+
+static int get_xwindow_title(Window window, char *title, int title_len);
+
+static unsigned char *get_window_property(Window window, Atom atom,
+					  size_t *num_items);
+
 #endif /* OSU_ON_LINUX */
 
 #ifdef OSU_ON_WINDOWS
-  #include <windows.h>
-  #include <tlhelp32.h>
+#include <windows.h>
+#include <tlhelp32.h>
 
-  HWND game_window;
-  HANDLE game_proc;
+HWND game_window;
+HANDLE game_proc;
 
-  struct handle_data {
-	HWND window_handle;
-	unsigned long process_id;
-  };
+struct handle_data {
+      HWND window_handle;
+      unsigned long process_id;
+};
 
-  __stdcall static WINBOOL enum_windows_callback(HWND handle, LPARAM param);
+__stdcall static WINBOOL enum_windows_callback(HWND handle, LPARAM param);
 #endif /* OSU_ON_WINDOWS */
 
 int find_window(unsigned long process_id, void **out_window)
@@ -91,6 +97,7 @@ __stdcall static WINBOOL enum_windows_callback(HWND handle, LPARAM param)
 #endif /* OSU_ON_WINDOWS */
 
 #ifdef OSU_ON_LINUX
+
 static int get_xwindow_title(Window window, char *title, int title_len)
 {
 	static Atom net_name_atom = -1, name_atom = -1;
@@ -100,13 +107,13 @@ static int get_xwindow_title(Window window, char *title, int title_len)
 	if (net_name_atom == (Atom)-1)
 		net_name_atom = XInternAtom(display, "_NET_WM_NAME", 0);
 
-	 // http://standards.freedesktop.org/wm-spec/1.3/ar01s05.html
-	 // Prefer _NET_WM_NAME if available, otherwise use WM_NAME
+	// http://standards.freedesktop.org/wm-spec/1.3/ar01s05.html
+	// Prefer _NET_WM_NAME if available, otherwise use WM_NAME
 
 	size_t num_items = 0;
 
 	unsigned char *prop = get_window_property(window, net_name_atom,
-		&num_items);
+						  &num_items);
 
 	if (!num_items) {
 		osu_debug("_NET_WM_NAME not set, falling back to WM_NAME");
@@ -133,8 +140,8 @@ static void search_children(pid_t pid, Window window, Window *out)
 	Window dummy, *children = NULL;
 
 	int success = XQueryTree(display, window, &dummy, &dummy, &children,
-		(unsigned *)&num_children);
-	
+				 (unsigned *)&num_children);
+
 	if (!success) {
 		if (children)
 			XFree(children);
@@ -158,7 +165,7 @@ static void search_children(pid_t pid, Window window, Window *out)
 		search_children(pid, children[i], out);
 	}
 
-	XFree(children);	
+	XFree(children);
 }
 
 static int is_window_match(Window window, pid_t pid)
@@ -185,7 +192,7 @@ static pid_t get_window_pid(Window window)
 
 	data = get_window_property(window, pid_atom, &num_items);
 
-	pid_t pid = (num_items > 0) ? ((pid_t) *((unsigned long *)data)) : 0;
+	pid_t pid = (num_items > 0) ? ((pid_t)*((unsigned long *)data)) : 0;
 
 	XFree(data);
 
@@ -193,7 +200,7 @@ static pid_t get_window_pid(Window window)
 }
 
 static unsigned char *get_window_property(Window window, Atom atom,
-	size_t *num_items)
+					  size_t *num_items)
 {
 	Atom actual_type;
 	int actual_format;
@@ -202,8 +209,9 @@ static unsigned char *get_window_property(Window window, Atom atom,
 	unsigned char *prop;
 
 	int status = XGetWindowProperty(display, window, atom, 0, (~0L), 0,
-		AnyPropertyType, &actual_type, &actual_format, num_items,
-		&bytes_after, &prop);
+					AnyPropertyType, &actual_type,
+					&actual_format, num_items,
+					&bytes_after, &prop);
 
 	if (status != Success) {
 		osu_debug("failed getting window (%ld) property", window);
@@ -221,7 +229,7 @@ static int is_window_visible(Window window)
 
 	if (!success) {
 		osu_debug("failed getting window (%ld) attributes",
-			window);
+			  window);
 
 		return 0;
 	}
@@ -232,4 +240,5 @@ static int is_window_visible(Window window)
 
 	return 1;
 }
+
 #endif /* OSU_ON_LINUX */
