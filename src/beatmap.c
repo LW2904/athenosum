@@ -95,7 +95,7 @@ size_t find_beatmap(char *base, char *partial, char **map)
 	*map = realloc(*map, map_len + 1);
 
 	/* Verify that the file we found is a beatmap.
-	       TODO: This is really crude right now */
+	   TODO: This is really crude right now */
 	if (strcmp(*map + map_len - 4, ".osu") != 0) {
 		osu_debug("%s is probably not a beatmap", *map);
 

@@ -9,19 +9,19 @@
 #include <dirent.h>
 
 #ifdef OSU_ON_LINUX
-	Display *display;
-	Window game_window;
+	Display *osu_display;
+	Window osu_game_window;
 #endif /* OSU_ON_LINUX */
 
 #ifdef OSU_ON_WINDOWS
 	#include <tlhelp32.h>
 
-	HWND game_window;
+	HWND osu_game_window;
 	HANDLE game_proc;
 #endif /* OSU_ON_WINDOWS */
 
-void *time_address;
-pid_t game_proc_id;
+void *osu_time_address;
+pid_t osu_game_proc_id;
 
 /**
  * Performs operating system specific setup.

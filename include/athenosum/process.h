@@ -20,8 +20,8 @@
 	HANDLE game_proc;
 #endif /* OSU_ON_WINDOWS */
 
-void *time_address;
-pid_t game_proc_id;
+void *osu_time_address;
+pid_t osu_game_proc_id;
 
 /**
  * Gets and returns the runtime of the currently playing song, internally

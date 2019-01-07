@@ -18,7 +18,7 @@ __attribute__ ((hot)) int32_t get_maptime()
 
 	// This function is called in tight loops, use the faster, insecure
 	// read_game_memory since we know our arguments are valid.
-	if (!(_read_game_memory(time_address, &time, size)))
+	if (!(_read_game_memory(osu_time_address, &time, size)))
 		return 0;
 
 	return time;
@@ -52,7 +52,7 @@ static inline ssize_t _read_game_memory(void *base, void *buffer,
 	remote[0].iov_len = size;
 	remote[0].iov_base = base;
 
-	read = process_vm_readv(game_proc_id, local, 1, remote, 1, 0);
+	read = process_vm_readv(osu_game_proc_id, local, 1, remote, 1, 0);
 #endif /* OSU_ON_LINUX */
 
 #ifdef OSU_ON_WINDOWS
@@ -111,17 +111,17 @@ end:
 void *get_time_address()
 {
 #ifdef OSU_ON_WINDOWS
-	void *time_address = NULL;
+	void *osu_time_address = NULL;
 	void *time_ptr = find_pattern((unsigned char *)SIGNATURE,
 		sizeof(SIGNATURE) - 1);
 
-	if (!ReadProcessMemory(game_proc, (void *)time_ptr, &time_address,
+	if (!ReadProcessMemory(game_proc, (void *)time_ptr, &osu_time_address,
 		sizeof(DWORD), NULL))
 	{
 		return NULL;
 	}
 
-	return time_address;
+	return osu_time_address;
 #endif
 
 #ifdef OSU_ON_LINUX

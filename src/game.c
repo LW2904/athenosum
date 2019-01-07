@@ -5,14 +5,14 @@ static size_t get_env_var(char *name, char **out_var);
 __attribute__ ((hot)) inline void send_keypress(int key, int down)
 {
 #ifdef OSU_ON_LINUX
-	KeyCode keycode = XKeysymToKeycode(display, key);
+	KeyCode keycode = XKeysymToKeycode(osu_display, key);
 
 	if (!keycode)
 		return;
 
-	XTestFakeKeyEvent(display, (unsigned)keycode, down, CurrentTime);
+	XTestFakeKeyEvent(osu_display, (unsigned)keycode, down, CurrentTime);
 
-	XFlush(display);
+	XFlush(osu_display);
 #endif /* OSU_ON_LINUX */
 
 #ifdef OSU_ON_WINDOWS
@@ -68,23 +68,23 @@ size_t get_osu_path(char **out_path)
 void do_setup()
 {
 #ifdef OSU_ON_LINUX
-	if (!(display = XOpenDisplay(NULL))) {
+	if (!(osu_display = XOpenDisplay(NULL))) {
 		printf("failed to open X display\n");
 
 		return;
 	}
 
-	osu_debug("opened X display (%#x)", (unsigned)(intptr_t)display);
+	osu_debug("opened X display (%#x)", (unsigned)(intptr_t)osu_display);
 #endif /* OSU_ON_LINUX */
 
 #ifdef OSU_ON_WINDOWS
-	if (!(game_proc = OpenProcess(PROCESS_VM_READ, 0, game_proc_id))) {
+	if (!(game_proc = OpenProcess(PROCESS_VM_READ, 0, osu_game_proc_id))) {
 		printf("failed to get handle to game process\n");
 		return;
 	}
 	
 	osu_debug("got handle to game process with ID %d",
-		(int)game_proc_id);
+		(int)osu_game_proc_id);
 #endif /* OSU_ON_WINDOWS */
 }
 
