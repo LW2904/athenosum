@@ -5,7 +5,7 @@ static size_t get_env_var(char *name, char **out_var);
 __attribute__ ((hot)) inline void send_keypress(int key, int down)
 {
 #ifdef OSU_ON_LINUX
-	KeyCode keycode = XKeysymToKeycode(osu_display, key);
+	KeyCode keycode = XKeysymToKeycode(osu_display, (KeySym)key);
 
 	if (!keycode)
 		return;

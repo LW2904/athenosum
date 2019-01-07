@@ -1,7 +1,7 @@
 #include "athenosum/process.h"
 
 static inline void *check_chunk(const unsigned char *sig, size_t sig_size,
-				unsigned char *buf, size_t buf_size);
+				const unsigned char *buf, size_t buf_size);
 
 /**
  * Copies game memory at base for size bytes into buffer.
@@ -76,7 +76,7 @@ unsigned long get_process_id(const char *name)
 
 	fclose(f);
 
-	proc_id = read ? (unsigned long)atoi(cmd) : 0;
+	proc_id = read ? (unsigned long)strtol(cmd, NULL, 10) : 0;
 
 	free(cmd);
 #endif /* OSU_ON_LINUX */
@@ -152,7 +152,7 @@ void *find_pattern(const unsigned char *signature, unsigned int sig_len)
 
 // TODO: Use a more efficient pattern matching algorithm.
 static inline void *check_chunk(const unsigned char *sig, size_t sig_size,
-				unsigned char *buf, size_t buf_size)
+				const unsigned char *buf, size_t buf_size)
 {
 	// Iterate over the buffer...
 	for (size_t i = 0; i < buf_size; i++) {

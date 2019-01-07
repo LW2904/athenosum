@@ -131,7 +131,7 @@ static int get_xwindow_title(Window window, char *title, int title_len)
 
 	XFree((void *)prop);
 
-	return strlen(title);
+	return (int)strlen(title);
 }
 
 static void search_children(pid_t pid, Window window, Window *out)

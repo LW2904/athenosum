@@ -22,7 +22,7 @@ static int parse_hitobject_line(char *line, int columns,
 /**
  * Populates *start and *end with data from hitpoint *point.
  */
-static void hitpoint_to_action(char *keys, struct osu_hitpoint *point,
+static void hitpoint_to_action(const char *keys, struct osu_hitpoint *point,
 			       struct osu_action *start,
 			       struct osu_action *end);
 
@@ -177,11 +177,15 @@ static int parse_beatmap_line(char *line, struct osu_beatmap_meta *meta)
 			parse_beatmap_token(key, value, meta);
 
 			break;
+		default: osu_debug("beatmap line '%s' has unexpected format",
+				   line);
+			goto exit;
 		}
 
 		token = strtok(NULL, ":");
 	}
 
+	exit:
 	free(ln);
 	free(key);
 	free(token);
@@ -198,8 +202,10 @@ static void parse_beatmap_token(char *key, char *value,
 		return;
 	}
 
+	errno = 0;
+
 	/* Always ignore last two characters since .osu files are CRLF by
-	       default. */
+	   default. */
 	if (!(strcmp(key, "Title"))) {
 		value[strlen(value) - 2] = '\0';
 
@@ -213,11 +219,17 @@ static void parse_beatmap_token(char *key, char *value,
 
 		strcpy(meta->version, value);
 	} else if (!(strcmp(key, "BeatmapID"))) {
-		meta->map_id = atoi(value);
+		meta->map_id = (int)strtol(value, NULL, 10);
 	} else if (!(strcmp(key, "BeatmapSetID"))) {
-		meta->set_id = atoi(value);
+		meta->set_id = (int)strtol(value, NULL, 10);
 	} else if (!(strcmp(key, "CircleSize"))) {
-		meta->columns = atoi(value);
+		meta->columns = (int)strtol(value, NULL, 10);
+	}
+
+	if (errno == ERANGE) {
+		osu_debug(
+			"something probably went wrong while converting '%s' to long",
+			value);
 	}
 }
 
@@ -229,10 +241,10 @@ static int parse_hitobject_line(char *line, int columns,
 	char *ln = strdup(line), *token = NULL;
 
 	/* Line is expected to follow the following format:
-	       x, y, time, type, hitSound, extras (= a:b:c:d:) */
+	   x, y, time, type, hitSound, extras (= a:b:c:d:) */
 	token = strtok(ln, ",");
 	while (token != NULL) {
-		secval = (int)strtol(token, NULL, 10);
+		secval = (unsigned int)strtol(token, NULL, 10);
 
 		switch (i++) {
 			/* X */
@@ -251,19 +263,24 @@ static int parse_hitobject_line(char *line, int columns,
 					  point->start_time + OSU_TAPTIME_MS;
 
 			break;
+		default: osu_debug("hitobject line '%s' has unexpected format",
+				   line);
+			goto exit;
 		}
 
 		token = strtok(NULL, ",");
 	}
 
+	exit:
 	free(ln);
 	free(token);
 
 	return i;
 }
 
-int parse_hitpoints(size_t count, size_t columns, struct osu_hitpoint **points,
-		    struct osu_action **actions)
+size_t parse_hitpoints(size_t count, size_t columns,
+		       struct osu_hitpoint **points,
+		       struct osu_action **actions)
 {
 	/* Allocate enough memory for all actions at once. */
 	*actions = malloc((2 * count) * sizeof(struct osu_action));
@@ -304,7 +321,7 @@ int parse_hitpoints(size_t count, size_t columns, struct osu_hitpoint **points,
 	return num_actions;
 }
 
-static void hitpoint_to_action(char *keys, struct osu_hitpoint *point,
+static void hitpoint_to_action(const char *keys, struct osu_hitpoint *point,
 			       struct osu_action *start, struct osu_action *end)
 {
 	end->time = point->end_time;
@@ -375,8 +392,8 @@ static int generate_number(int range, int rounds, double bound)
 	for (int i = 0; i < rounds; i++) {
 		int in = rn > (range * minr) && rn < (range * maxr);
 
-		rn += (in ? (rand() % (int)(range * minr)) : 0)
-		      * (rn < (range * 0.5) ? -1 : 1);
+		rn += (in ? (rand() % (int)(range * minr)) : 0) *
+		      (rn < (range * 0.5) ? -1 : 1);
 	}
 
 	return rn;
