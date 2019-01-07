@@ -14,4 +14,4 @@ cmake ..
 sudo make install
 ```
 
-You will find the (shared) library and all public headers in the their respective default directories.
+You will find the (shared) library and all public headers in their respective default directories.
