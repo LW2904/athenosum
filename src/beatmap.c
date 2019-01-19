@@ -4,20 +4,23 @@
  * Parses a raw beatmap line into a beatmap_meta struct pointed to by *meta.
  * Returns the number of tokens read.
  */
-static int parse_beatmap_line(char *line, struct osu_beatmap_meta *meta);
+static int parse_meta_line(char *line, struct osu_beatmap_meta *meta);
 
 /**
  * Parses a key:value set into *meta.
  */
-static void parse_beatmap_token(char *key, char *value,
-				struct osu_beatmap_meta *meta);
+static void parse_meta_token(char *key, char *value,
+			     struct osu_beatmap_meta *meta);
 
 /**
  * Parses a raw hitobject line into a hitpoint struct pointed to by *point.
  * Returns the number of tokens read.
  */
-static int parse_hitobject_line(char *line, int columns,
-				struct osu_hitpoint *point);
+static int parse_hitobject_line(char *line, struct osu_beatmap_meta *meta,
+				struct osu_hitobject *point);
+
+static int parse_extras_field(char *extras, struct osu_hitobject *object);
+
 
 /**
  * Populates *start and *end with data from hitpoint *point.
@@ -44,7 +47,7 @@ static size_t find_partial_file(char *base, char *partial, char **out_file);
  * Given a base, returns the number of concurrent characters which match
  * partial.
  */
-static int partial_match(char *base, char *partial);
+static int partial_match(char *base, const char *partial);
 
 const char col_keys[9] = "asdfjkl[";
 
@@ -70,7 +73,7 @@ size_t find_beatmap(char *base, char *partial, char **map)
 	strcpy(*map, base);
 	/* A.p. to the beatmap folder. */
 	strcpy(*map + base_len, folder);
-	/* Add a trailing seperator and terminating zero. */
+	/* Add a trailing separator and terminating zero. */
 	strcpy(*map + base_len + folder_len,
 	       (char[2]){ (char)OSU_SEPARATOR, '\0' });
 
@@ -107,10 +110,191 @@ size_t find_beatmap(char *base, char *partial, char **map)
 	return map_len;
 }
 
-/* TODO: Inefficient as it calls realloc() for every parsed line. Allocate
-	 memory in chunks and copy it to adequately sized buffer once done. */
-size_t parse_beatmap(char *file, struct osu_hitpoint **points,
+size_t parse_beatmap(char *file, struct osu_hitobject **objects,
 		     struct osu_beatmap_meta **meta)
+{
+	if (!file || !objects || !meta) {
+		osu_debug("received null pointer");
+		return 0;
+	}
+
+	errno = 0;
+	FILE *stream;
+
+	if (!(stream = fopen(file, "r"))) {
+		osu_debug("couldn't open file '%s': %d", file, errno);
+		return 0;
+	}
+
+	*objects = NULL;
+	*meta = calloc(1, sizeof(struct osu_beatmap_meta));
+
+	char *line = malloc(OSU_BMP_MAX_LINE_LEN);
+	char *section = malloc(OSU_BMP_MAX_LINE_LEN);
+
+	size_t num_parsed = 0;
+	struct osu_hitobject cur_object;
+
+	while (fgets(line, OSU_BMP_MAX_LINE_LEN, stream)) {
+		if (!(strcmp(section, "[Metadata]\n"))) {
+			parse_meta_line(line, *meta);
+		} else if (!(strcmp(section, "[Difficulty]\n"))) {
+			parse_meta_line(line, *meta);
+		} else if (!(strcmp(section, "[HitObjects]\n"))) {
+			parse_hitobject_line(line, *meta, &cur_object);
+
+			/* TODO: This is inefficient as all hell */
+			*objects = realloc(*objects, ++num_parsed *
+						     sizeof(struct osu_hitobject));
+			objects[0][num_parsed - 1] = cur_object;
+		}
+
+		if (line[0] == '[')
+			strcpy(section, line);
+	}
+}
+
+/* TODO: This function is not thread safe. */
+static int parse_meta_line(char *line, struct osu_beatmap_meta *meta)
+{
+	int i = 0;
+	char *ln = strdup(line);
+	char *token = NULL, *key = NULL, *value = NULL;
+
+	/* Metadata lines come in key:value pairs */
+	token = strtok(ln, ":");
+	while (token != NULL) {
+		switch (i++) {
+		case 0: key = strdup(token);
+			break;
+		case 1: value = strdup(token);
+
+			parse_meta_token(key, value, meta);
+
+			break;
+		default: osu_debug("beatmap line '%s' has unexpected format",
+				   line);
+			goto exit;
+		}
+
+		token = strtok(NULL, ":");
+	}
+
+	exit:
+	free(ln);
+	free(key);
+	free(token);
+	free(value);
+
+	return i;
+}
+
+static void parse_meta_token(char *key, char *value,
+			     struct osu_beatmap_meta *meta)
+{
+	if (!key || !value || !meta) {
+		osu_debug("received null pointer");
+		return;
+	}
+
+	errno = 0;
+
+	/* Always ignore last two characters since .osu files are CRLF by
+	   default */
+	if (!(strcmp(key, "Title"))) {
+		value[strlen(value) - 2] = '\0';
+
+		strcpy(meta->title, value);
+	} else if (!(strcmp(key, "Artist"))) {
+		value[strlen(value) - 2] = '\0';
+
+		strcpy(meta->artist, value);
+	} else if (!(strcmp(key, "Version"))) {
+		value[strlen(value) - 2] = '\0';
+
+		strcpy(meta->version, value);
+	} else if (!(strcmp(key, "BeatmapID"))) {
+		meta->map_id = (int)strtol(value, NULL, 10);
+	} else if (!(strcmp(key, "BeatmapSetID"))) {
+		meta->set_id = (int)strtol(value, NULL, 10);
+	} else if (!(strcmp(key, "CircleSize"))) {
+		meta->circle_size = (int)strtol(value, NULL, 10);
+	}
+
+	if (errno == ERANGE) {
+		osu_debug(
+			"something probably went wrong while converting '%s' to long (%d)",
+			value, errno);
+	}
+}
+
+/* TODO: This function is not thread safe. */
+static int parse_hitobject_line(char *line, struct osu_beatmap_meta *meta,
+				struct osu_hitobject *object)
+{
+	int secval = 0, end_time = 0, slider = 0, i = 0;
+	char *ln = strdup(line), *token = NULL;
+
+	token = strtok(ln, ",");
+	while (token != NULL) {
+		secval = (unsigned int)strtol(token, NULL, 10);
+
+		switch (i++) {
+			/* X */
+		case 0: object->x = secval;
+			break;
+			/* Y */
+		case 1: object->y = secval;
+			/* Start time */
+		case 2: object->time = secval;
+			break;
+			/* Type */
+		case 3: object->type = secval;
+			break;
+		case 4: /* Hitsound, we don't care */
+			break;
+			/* Extra string, depends on type */
+		case 5: parse_extras_field(token, object);
+			break;
+		default: osu_debug("hitobject line '%s' has unexpected format",
+				   line);
+			goto exit;
+		}
+
+		token = strtok(NULL, ",");
+	}
+
+	exit:
+	free(ln);
+	free(token);
+
+	return i;
+}
+
+static int parse_extras_field(char *extras, struct osu_hitobject *object)
+{
+	char *extr = strdup(extras), *token = NULL;
+
+	if (object->type & OSU_TYPE_SLIDER) {
+		char *slider_type = strtok(extr, "|");
+
+		if (!(strcmp(slider_type, "L"))) {
+			object->slider_type = OSU_SLIDER_LINEAR;
+		} else if (!(strcmp(slider_type, "P"))) {
+			object->slider_type = OSU_SLIDER_PERFECT;
+		} else if (!(strcmp(slider_type, "B"))) {
+			object->slider_type = OSU_SLIDER_BEZIER;
+		} else object->slider_type = OSU_SLIDER_UNKNOWN;
+
+		/* TODO: Implement slider parsing logic. */
+	} else if (object->type & OSU_TYPE_SPINNER) {
+	}
+}
+
+/* TODO: Inefficient as it reallocated memory for every parsed line. Allocate
+ * 	 memory in chunks and copy it to adequately sited buffer once done. */
+size_t parse_beatmap_legacy(char *file, struct osu_hitpoint **points,
+			    struct osu_beatmap_meta **meta)
 {
 	if (!points || !meta || !file) {
 		osu_debug("received null pointer");
@@ -138,11 +322,11 @@ size_t parse_beatmap(char *file, struct osu_hitpoint **points,
 	/* TODO: This loop body is all kinds of messed up. */
 	while (fgets(line, (int)line_len, stream)) {
 		if (!(strcmp(cur_section, "[Metadata]\n"))) {
-			parse_beatmap_line(line, *meta);
+			parse_meta_line(line, *meta);
 		} else if (!(strcmp(cur_section, "[Difficulty]\n"))) {
-			parse_beatmap_line(line, *meta);
+			parse_meta_line(line, *meta);
 		} else if (!(strcmp(cur_section, "[HitObjects]\n"))) {
-			parse_hitobject_line(line, meta[0]->columns,
+			parse_hitobject_line(line, meta[0]->circle_size,
 					     &cur_point);
 
 			*points = realloc(*points, ++num_parsed * hp_size);
@@ -157,125 +341,6 @@ size_t parse_beatmap(char *file, struct osu_hitpoint **points,
 	fclose(stream);
 
 	return num_parsed;
-}
-
-/* TODO: This function is not thread safe. */
-static int parse_beatmap_line(char *line, struct osu_beatmap_meta *meta)
-{
-	int i = 0;
-	char *ln = strdup(line);
-	char *token = NULL, *key = NULL, *value = NULL;
-
-	/* Metadata lines come in key:value pairs. */
-	token = strtok(ln, ":");
-	while (token != NULL) {
-		switch (i++) {
-		case 0: key = strdup(token);
-			break;
-		case 1: value = strdup(token);
-
-			parse_beatmap_token(key, value, meta);
-
-			break;
-		default: osu_debug("beatmap line '%s' has unexpected format",
-				   line);
-			goto exit;
-		}
-
-		token = strtok(NULL, ":");
-	}
-
-	exit:
-	free(ln);
-	free(key);
-	free(token);
-	free(value);
-
-	return i;
-}
-
-static void parse_beatmap_token(char *key, char *value,
-				struct osu_beatmap_meta *meta)
-{
-	if (!key || !value || !meta) {
-		osu_debug("received null pointer");
-		return;
-	}
-
-	errno = 0;
-
-	/* Always ignore last two characters since .osu files are CRLF by
-	   default. */
-	if (!(strcmp(key, "Title"))) {
-		value[strlen(value) - 2] = '\0';
-
-		strcpy(meta->title, value);
-	} else if (!(strcmp(key, "Artist"))) {
-		value[strlen(value) - 2] = '\0';
-
-		strcpy(meta->artist, value);
-	} else if (!(strcmp(key, "Version"))) {
-		value[strlen(value) - 2] = '\0';
-
-		strcpy(meta->version, value);
-	} else if (!(strcmp(key, "BeatmapID"))) {
-		meta->map_id = (int)strtol(value, NULL, 10);
-	} else if (!(strcmp(key, "BeatmapSetID"))) {
-		meta->set_id = (int)strtol(value, NULL, 10);
-	} else if (!(strcmp(key, "CircleSize"))) {
-		meta->columns = (int)strtol(value, NULL, 10);
-	}
-
-	if (errno == ERANGE) {
-		osu_debug(
-			"something probably went wrong while converting '%s' to long",
-			value);
-	}
-}
-
-/* TODO: This function is not thread safe. */
-static int parse_hitobject_line(char *line, int columns,
-				struct osu_hitpoint *point)
-{
-	int secval = 0, end_time = 0, slider = 0, i = 0;
-	char *ln = strdup(line), *token = NULL;
-
-	/* Line is expected to follow the following format:
-	   x, y, time, type, hitSound, extras (= a:b:c:d:) */
-	token = strtok(ln, ",");
-	while (token != NULL) {
-		secval = (unsigned int)strtol(token, NULL, 10);
-
-		switch (i++) {
-			/* X */
-		case 0: point->column = secval / (OSU_COLS_WIDTH / columns);
-			break;
-			/* Start time */
-		case 2: point->start_time = secval;
-			break;
-			/* Type */
-		case 3: slider = secval & OSU_TYPE_SLIDER;
-			break;
-			/* Extra string, first element is either 0 or end time */
-		case 5: end_time = (int)strtol(strtok(token, ":"), NULL, 10);
-
-			point->end_time = slider ? end_time :
-					  point->start_time + OSU_TAPTIME_MS;
-
-			break;
-		default: osu_debug("hitobject line '%s' has unexpected format",
-				   line);
-			goto exit;
-		}
-
-		token = strtok(NULL, ",");
-	}
-
-	exit:
-	free(ln);
-	free(token);
-
-	return i;
 }
 
 size_t parse_hitpoints(size_t count, size_t columns,
@@ -315,8 +380,7 @@ size_t parse_hitpoints(size_t count, size_t columns,
 
 	free(key_subset);
 
-	/* TODO: Check if all *actions memory was used and free() if
-	       applicable. */
+	/* TODO: Free unused *actions memory (if any). */
 
 	return num_actions;
 }
@@ -327,8 +391,10 @@ static void hitpoint_to_action(const char *keys, struct osu_hitpoint *point,
 	end->time = point->end_time;
 	start->time = point->start_time;
 
-	end->down = 0;                /* Keyup. */
-	start->down = 1;        /* Keydown. */
+	/* Keyup */
+	end->down = 0;
+	/* Keydown */
+	start->down = 1;
 
 	char key = keys[point->column];
 
@@ -436,7 +502,7 @@ static size_t find_partial_file(char *base, char *partial, char **out_file)
 }
 
 /* TODO: I'm certain there's a more elegant way to go about this. */
-static int partial_match(char *base, char *partial)
+static int partial_match(char *base, const char *partial)
 {
 	int i = 0;
 	int m = 0;
