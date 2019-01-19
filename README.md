@@ -22,6 +22,8 @@ You will find the (shared) library and all public headers in their respective de
 
 __This is a work in progress.__ The code here should be considered pre-alpha, and this should only be used by tinkerers or hackers at this point.
 
+Anything requiring `Xtest` is currently __broken__, this includes keypress simulation.
+
 #### Usage
 
 You will find that all functions declarations are following a comment block, describing their use and usage.
