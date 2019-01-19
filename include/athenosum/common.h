@@ -8,6 +8,8 @@
 #include <inttypes.h>
 #include <sys/types.h>
 
+int errno;
+
 #define OSU_KEY_RETURN 0xFF0D
 #define OSU_KEY_ESCAPE 0xFF1B
 
