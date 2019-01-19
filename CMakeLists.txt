@@ -1,15 +1,10 @@
 cmake_minimum_required (VERSION 3.13)
 
-project(libathenosum VERSION 0.0.1 LANGUAGES C)
+project(libathenosum VERSION 0.0.1 LANGUAGES CXX)
 
 include(GNUInstallDirs)
 
-add_library(athenosum SHARED 
-	src/beatmap.c
-	src/game.c
-	src/process.c
-	src/window.c
-)
+# add_library(athenosum SHARED)
 
 target_include_directories(athenosum
 	PUBLIC
@@ -26,7 +21,7 @@ if(UNIX AND NOT APPLE)
 	target_link_libraries(athenosum PRIVATE ${X11_LIBRARIES} ${X11_Xtst_LIB})
 endif()
 
-target_compile_options(athenosum PRIVATE $<$<C_COMPILER_ID:GNU>:-Wall -D OSU_DEBUG>)
+target_compile_options(athenosum PRIVATE $<$<C_COMPILER_ID:GNU>:-Wall>)
 
 install(TARGETS athenosum
 	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
